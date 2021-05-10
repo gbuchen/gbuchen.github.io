@@ -1,0 +1,31 @@
+---
+title: Let's Look at some Python!
+author: 'Grace Buchen'
+date: '2021-05-09'
+slug: my-first-blog-post
+categories: []
+tags: []
+description: 'This is my first post on this website so I hope you liked it.'
+---
+
+No, not the snake!! 
+
+![](/post/2021-05-09-my-first-blog-post_files/Invasive_5.jpeg)
+
+In case that was triggering here is a picture of my dogs dressed like lions on Halloween. 
+
+![](/post/2021-05-09-my-first-blog-post_files/IMG_6715.jpeg)
+
+Time to do some actual coding... 
+
+```{R}
+library(reticulate)
+thats <- "I don't"
+```
+
+```{python}
+me="like snakes!"
+print(r.thats,me)  
+```
+
+Thanks for reading my post! You just found out some super secretive information about me! Enjoy :) 

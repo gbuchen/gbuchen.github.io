@@ -1,8 +1,291 @@
 ---
-title: "Project 2"
-author: "Me"
-date: "2020-12-01"
-output: html_document
+title: 'Project 2: Modeling, Testing, and Predicting'
+author: "SDS348"
+date: 'May 7, 2021'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
 ---
 
-## Test Project 2
+```{r setup, include=FALSE}
+library(knitr)
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  # this hook is used only when the linewidth option is not NULL
+  if (!is.null(n <- options$linewidth)) {
+    x = knitr:::split_lines(x)
+    # any lines wider than n should be wrapped
+    if (any(nchar(x) > n)) x = strwrap(x, width = n)
+    x = paste(x, collapse = '\n')
+  }
+  hook_output(x, options)
+})
+
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE,fig.align="center",warning=FALSE,message=FALSE,fig.width=8, fig.height=5, linewidth=60)
+options(tibble.width = 100,width = 100)
+library(tidyverse)
+```
+
+## Grace Buchen, gb23396
+
+## Modeling
+
+#### Finding data:
+
+```{R}
+library(AER)
+data("NMES1988")
+
+library(tidyverse)
+library(dplyr)
+
+medical <- NMES1988 %>% slice(1:2000)
+```
+
+*Due to the size of the original dataset, I decided to cut down the number of observations from 4406 to 2000 in order to more easily explore the data. For this project, I chose to use the NMES1988 dataset as it deals with health data for individuals 66 years and older which is a topic that is very interesting to me as I want to work in health care. With this project, I really wanted to explore how certain variables affect the number of physician office visits for patients. The main variables I want to explore are how patient income, number of chronic health conditions, self-perceived health status, whether the patient was African-American, and number of physician office visits related to one another. Self-perceived health status is rated based on poor, average, or excellent, and income is based on family income in USD 10,000.*
+
+
+#### 1. MANOVA and ANOVA  
+
+```{R}
+#MANOVA
+manova(cbind(visits, nvisits, novisits, ovisits, emergency, hospital, chronic, income, age, school)~health,data=medical) -> man1
+summary(man1)
+summary.aov(man1)
+
+#For number of physician office visits
+summary(aov(visits~health,data=medical))
+pairwise.t.test(medical$visits, medical$health, p.adj = "none")
+
+#For number of physician hospital outpatient visits
+summary(aov(ovisits~health,data=medical))
+pairwise.t.test(medical$ovisits, medical$health, p.adj = "none")
+
+#For emergency room visits
+summary(aov(emergency~health,data=medical))
+pairwise.t.test(medical$emergency, medical$health, p.adj = "none")
+
+#For number of hospital stays 
+summary(aov(hospital~health,data=medical))
+pairwise.t.test(medical$hospital, medical$health, p.adj = "none")
+
+#For number of chronic conditions
+summary(aov(chronic~health,data=medical))
+pairwise.t.test(medical$chronic, medical$health, p.adj = "none")
+
+#For income
+summary(aov(income~health,data=medical))
+pairwise.t.test(medical$income, medical$health, p.adj = "none")
+
+#For age
+summary(aov(age~health,data=medical))
+pairwise.t.test(medical$age, medical$health, p.adj = "none")
+
+#For number of years of education
+summary(aov(school~health,data=medical))
+pairwise.t.test(medical$school, medical$health, p.adj = "none")
+
+#Type I Error
+1 - (0.95)^33
+
+#Bonferroni adjusted 
+.05/33
+```
+
+*The MANOVA test indicated that all of the numeric variables except for the number of non-physician office visits and the number of non-physician hospital outpatient visits show a mean difference across levels of self-perceived health status. A total of 33 tests were performed. The probability that at least one error was made is 0.816 which is relatively high. The bonferroni adjusted significance level that should be used is 0.00152. The post hoc tests for the number of physician office visits and emergency room visits indicate differences for average and excellent health are no longer significant after the adjustment but were significant before. Additionally, for income and age, differences for poor and average health are no longer significant and for age, differences for poor and excellent health are also no longer significant but were before the adjustment. MANOVA assumes that dependent variables have multivariate normality and that for each dependent variable, there is homogeneity of within-group covariance matrices and equal covariance between any two dependent variables. It also assumes that there are linear relationships among dependent variables and no extreme univariate or multivariate outliers which are likely not met.*
+
+
+#### 2. Randomization Test  
+
+```{R}
+medical %>% group_by(afam) %>% summarize(means=mean(visits)) %>% summarize(`mean_diff`=diff(means))
+
+rand_dist<-vector() 
+for(i in 1:5000){
+  new <- data.frame(visits=sample(medical$visits),afam=medical$afam) 
+rand_dist[i]<-mean(new[new$afam=="yes",]$visits)-mean(new[new$afam=="no",]$visits)}
+
+{hist(rand_dist,main="",ylab=""); abline(v = c(1.657962, -1.657962),col="blue")}
+
+mean(rand_dist < -1.657962 | rand_dist > 1.657962) 
+```
+
+*A mean difference randomization test was performed as the association between a categorical and numeric variable was explored. The null hypothesis is that mean physician office visits is the same for African-Americans and non African-Americans. The alternative hypothesis is that mean physician office visits is different for African-Americans and non African-Americans. The p-value generated from this randomization test is less than 0.05 indicating we reject the null hypothesis and there is a difference in mean visits for African-Americans and non African-Americans.* 
+
+
+#### 3. Linear Regression Model  
+    
+```{R}
+medical %>% mutate(income_c= income - mean(income,na.rm=T)) -> medical2
+lm(visits~health*income_c, data=medical2) -> model1
+summary(model1)
+
+
+resids <- lm(visits~health*income_c,data=medical2)$residuals
+ggplot()+geom_histogram(aes(resids),bins=20)
+resids2 <- model1$residuals
+fitvals<-model1$fitted.values
+ggplot()+geom_point(aes(fitvals,resids2))+geom_hline(yintercept=0, color='red')
+
+ggplot(medical2, aes(income_c, visits)) + geom_point()+geom_smooth(method="lm")
+
+library(sandwich); library(lmtest)
+bptest(model1)
+coeftest(model1,vcov=vcovHC(model1))
+```
+
+*Predicted number of physician office visits for patients indicating average health status with 0 USD family income is 5.73. Income does not very strongly relate to office visits for patients with average health status as for every $10,000 increase in income (as income is measured in USD 10,000) patient office visits increase by 0.038 which is relatively small. When controlling for income ($0 USD), individuals with poor health are predicted to have 3.362 more office visits than those with average health and individuals with excellent health are predicted to have 1.832 fewer office visits than those with average health. The slope of income on office visits for patients with poor health is 0.211 smaller than that for patients with average health. The proportion of the variation in the outcome that the model explains is seen in the adjusted R-squared value which is 0.02754. Based on the histogram, it appears that the assumption of normality is not met. Based on the scatterplot, it vaguely appears that the assumption of linearity is met. Based on the last plot for the linear regression, it appears homoskedasticity is met as the points seem to fan out on the x-axis. The Breuch-Pagan test confirms that homoskedasticity is met as we fail to reject the null hypothesis of homoskedasticity based on the p-value of 0.2287. The t-values generally increased after robust SEs except for the healthpoor variable. The SE values only marginally changed. The p-values also only marginally changed indicating that the same results from before robust SEs remained significant and the conclusion did not change.* 
+
+
+#### 4. Bootstrapping  
+
+```{R}
+lm(visits~health*income_c, data=medical2) -> model1
+
+boot_dat<- sample_frac(medical2, replace=T)
+samp_distn <- replicate(5000, {  
+  boot_dat <- sample_frac(medical2, replace=T)  
+  fit1 <- lm(visits~health*income_c, data=boot_dat) 
+  coef(fit1)
+  }) 
+samp_distn %>% t %>% as.data.frame %>% summarize_all(sd)
+```
+
+*bootstrapped standard errors were calculated by resampling observations. Compared to the original normal-theory SEs, bootstrapped standard errors  differ marginally. The bootstrapped SE for the intercept went down compared to the original, went up for the healthpoor and healthpoor:income_c variables and went down for the healthexcellent, income_c, and healthexcellent:income_c variables.*
+
+
+#### 5. Logistic Regression Model  
+    
+```{R}
+medical3 <- medical %>% mutate(y=ifelse(chronic=="0",1,0))
+fit2 <-glm(y~visits+income, data=medical3, family=binomial(link="logit"))
+coeftest(fit2)
+exp(coef(fit2))
+
+prob2 <- predict(fit2,type="response")
+pred <- ifelse(prob2 >.5,1,0)
+table(prediction=pred, truth=medical3$y) %>% addmargins
+(1539+1)/2000 #Accuracy
+1539/1996 #Sensitivity 
+1/4 #Specificity
+1539/1542 #Precision
+
+medical3$logit<-predict(fit2,type="link")
+newdata2 <- medical3 %>% mutate(chronic2= dplyr::recode(y, "1"="no", "0"="yes"))
+newdata2 %>% ggplot() + geom_density(aes(logit,color=chronic2,fill=chronic2), alpha=.4)+
+  theme(legend.position=c(.85,.85))+geom_vline(xintercept=0)+xlab("predictor (logit)")
+
+library(plotROC)
+ggplot(medical3)+geom_roc(aes(d=y,m=prob2), n.cuts=0) -> roc
+roc
+calc_auc(roc)
+```
+
+*Each coefficient generated a significant result indicating that income and number of office visits are significant predictors of whether or not a patient has a chronic condition. Controlling for income, for every 1-unit increase in visits, the odds of whether a patient has a chronic condition changes by a factor of 0.9041. Controlling for visits, for every 1-unit increase in income, the odds of whether a patient has a chronic condition changes by a factor of 0.4338. Accuracy was calculated to be 0.77 indicating the proportion of correctly classified cases. Sensitivity is 0.771 indicating the proportion of patients without a chronic condition correctly classified. Specificity is 0.25 indicating the proportion of patients with a chronic condition correctly classified. This number is quite low which was surprising. Precision was calculated to be 0.998 which is the proportion of classified patients without a chronic condition who actually are without a chronic condition. This model of predicting whether a patient has a chronic condition from income and number of physician office visits independently is not effective as indicated by the poor AUC value of 0.678. The density plot generated indicates that left of 0, the gray area is the proportion of individuals without a chronic condition that were false negatives (i.e. did have a chronic condition) which appears to be relatively high.*
+
+
+#### 6. Logistic Regression and LASSO   
+
+```{R}
+class_diag<-function(probs,truth){
+  
+  if(is.numeric(truth)==FALSE & is.logical(truth)==FALSE) truth<-as.numeric(truth)-1
+  
+  tab<-table(factor(probs>.5,levels=c("FALSE","TRUE")),truth)
+  prediction<-ifelse(probs>.5,1,0)
+  acc=mean(truth==prediction)
+  sens=mean(prediction[truth==1]==1)
+  spec=mean(prediction[truth==0]==0)
+  ppv=mean(truth[prediction==1]==1)
+  f1=2*(sens*ppv)/(sens+ppv)
+  
+  ord<-order(probs, decreasing=TRUE)
+  probs <- probs[ord]; truth <- truth[ord]
+  
+  TPR=cumsum(truth)/max(1,sum(truth)) 
+  FPR=cumsum(!truth)/max(1,sum(!truth))
+  
+  dup<-c(probs[-1]>=probs[-length(probs)], FALSE)
+  TPR<-c(0,TPR[!dup],1); FPR<-c(0,FPR[!dup],1)
+  
+  n <- length(TPR)
+  auc<- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+
+  data.frame(acc,sens,spec,ppv,auc)
+}
+
+#In-sample classification diagnostics 
+library(tidyverse)
+library(lmtest)
+newmedical <- medical %>% mutate(chronic=ifelse(chronic=="0",1,0))
+
+fit <- glm(chronic~(.)^2, data=newmedical, family="binomial")
+prob <- predict(fit,type="response")
+class_diag(prob,newmedical$chronic)
+
+#10-fold CV
+set.seed(1234)
+k=10
+
+data <- newmedical %>% sample_frac 
+folds <- ntile(1:nrow(data),n=10) 
+
+diags<-NULL
+for(i in 1:k){
+  train <- data[folds!=i,] 
+  test <- data[folds==i,] 
+  truth <- test$chronic 
+  
+  fit4 <- glm(chronic~(.)^2, data=train, family="binomial")
+  probs4 <- predict(fit4, newdata=test, type="response")
+  
+  diags<-rbind(diags,class_diag(probs4,truth))
+}
+
+summarize_all(diags,mean)
+
+#LASSO
+library(glmnet)
+y <- as.matrix(newmedical$chronic) 
+x <- model.matrix(chronic~.,data=newmedical)[,-1] 
+x <- scale(x)
+
+cv<-cv.glmnet(x,y,family="binomial")
+lasso<-glmnet(x,y,family="binomial",lambda=cv$lambda.1se)
+coef(lasso)
+
+#10-fold CV on LASSO variables 
+set.seed(1234)
+k=10
+
+data <- newmedical %>% sample_frac 
+folds <- ntile(1:nrow(data),n=10) 
+
+diags<-NULL
+for(i in 1:k){
+  train <- data[folds!=i,] 
+  test <- data[folds==i,] 
+  truth <- test$chronic
+  
+  fit5 <- glm(chronic~visits+nvisits+health+adl+age+employed, 
+             data=train, family="binomial")
+  probs5 <- predict(fit5, newdata=test, type="response")
+  
+  diags <- rbind(diags,class_diag(probs5,truth))
+}
+
+diags %>% summarize_all(mean)
+```
+
+*The in-sample classification diagnostics generated an Accuracy of 0.8105, Sensitivity of 0.3188, Specificity of 0.9565, Precision of 0.6854, and AUC of 0.827. This AUC value is relatively high indicating that this model is predicting whether a patient has a chronic condition accurately. The values for sensitivity and precision are quite low but the others are relatively high. The 10-fold CV produced very different average out-of-sample classification diagnostics. Accuracy was reduced to 0.7255, Sensitivity reduced to 0.2192, Specificity reduced to 0.8802, Precision significantly reduced to 0.3564, and AUC reduced to 0.6486. All in all, the AUC and diagnostic values indicate that this model is very bad at predicting whether a patient has a chronic condition on new data. Additionally, the drop in AUC from the original (generated from the in-sample metrics) indicates that there is over fitting and the model is too flexible. The LASSO results indicated that the variables of visits, nvisits, health, adl, age, and employed will make the best predictions on new data. The 10-fold CV using only the variables LASSO selected generated an AUC of 0.7224 which is notably lower than the original of 0.827. This drop in AUC indicates that this model cannot classify as well whether a patient has a chronic condition.* 
+
+
+```{R, echo=F}
+```
+
+
+
+

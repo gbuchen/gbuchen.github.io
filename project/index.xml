@@ -1,28 +1,27 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Projects on Chris Turner</title>
+    <title>Projects on My website</title>
     <link>/project/</link>
-    <description>Recent content in Projects on Chris Turner</description>
+    <description>Recent content in Projects on My website</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en-US</language>
-    <lastBuildDate>Tue, 01 Dec 2020 00:00:00 +0000</lastBuildDate><atom:link href="/project/index.xml" rel="self" type="application/rss+xml" />
+    <language>en-US</language><atom:link href="/project/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>Project 1</title>
+      <title>Project 1: Exploratory Data Analysis</title>
       <link>/project/project1/</link>
-      <pubDate>Tue, 01 Dec 2020 00:00:00 +0000</pubDate>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>/project/project1/</guid>
-      <description> Test Project 1  </description>
+      <description>Grace Buchen, gb23396  Data Wrangling and Data Exploration Finding data: library(AER) data(&amp;quot;USSeatBelts&amp;quot;) library(readr) Consumption_Alcohol &amp;lt;- read_csv(&amp;quot;Consumption_Alcohol.csv&amp;quot;, col_types = cols(Beer = col_number(), Wine = col_number(), Spirits = col_number(), `All beverages` = col_number())) library(tidyverse) library(dplyr) When starting this project, I wanted to choose a topic that was important to me. In exploring the datasets in R, I found the USSeatBelts dataset. This dataset looks at traffic fatalities and seat belt usage for the years 1983–1997 for states in the U.</description>
     </item>
     
     <item>
-      <title>Project 2</title>
+      <title>Project 2: Modeling, Testing, and Predicting</title>
       <link>/project/project2/</link>
-      <pubDate>Tue, 01 Dec 2020 00:00:00 +0000</pubDate>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>/project/project2/</guid>
-      <description> Test Project 2  </description>
+      <description>Grace Buchen, gb23396  Modeling Finding data: library(AER) data(&amp;quot;NMES1988&amp;quot;) library(tidyverse) library(dplyr) medical &amp;lt;- NMES1988 %&amp;gt;% slice(1:2000) Due to the size of the original dataset, I decided to cut down the number of observations from 4406 to 2000 in order to more easily explore the data. For this project, I chose to use the NMES1988 dataset as it deals with health data for individuals 66 years and older which is a topic that is very interesting to me as I want to work in health care.</description>
     </item>
     
   </channel>

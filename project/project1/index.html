@@ -7,7 +7,7 @@
     <meta name="author" content="Grace Buchen" />
     
     <link rel="shortcut icon" type="image/x-icon" href="../../img/favicon.ico">
-    <title>Project 1</title>
+    <title>Project 1: Exploratory Data Analysis</title>
     <meta name="generator" content="Hugo 0.83.1" />
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" href="../../css/main.css" />
@@ -54,13 +54,13 @@
       <div class="container">
         <div class="blog-post">
           <h3>
-            <strong><a href="../../project/project1/">Project 1</a></strong>
+            <strong><a href="../../project/project1/">Project 1: Exploratory Data Analysis</a></strong>
           </h3>
         </div>
  
 <div class="blog-title">
           <h4>
-         December 1, 2020 
+         January 1, 0001 
             &nbsp;&nbsp;
             
           </h4>
@@ -72,8 +72,271 @@
               
 
 
-<div id="test-project-1" class="section level2">
-<h2>Test Project 1</h2>
+<div id="grace-buchen-gb23396" class="section level2">
+<h2>Grace Buchen, gb23396</h2>
+</div>
+<div id="data-wrangling-and-data-exploration" class="section level2">
+<h2>Data Wrangling and Data Exploration</h2>
+<div id="finding-data" class="section level4">
+<h4>Finding data:</h4>
+<pre class="r"><code>library(AER)
+data(&quot;USSeatBelts&quot;)
+
+library(readr)
+Consumption_Alcohol &lt;- read_csv(&quot;Consumption_Alcohol.csv&quot;, col_types = cols(Beer = col_number(), 
+    Wine = col_number(), Spirits = col_number(), `All beverages` = col_number()))
+
+library(tidyverse)
+library(dplyr)</code></pre>
+<p><em>When starting this project, I wanted to choose a topic that was important to me. In exploring the datasets in R, I found the USSeatBelts dataset. This dataset looks at traffic fatalities and seat belt usage for the years 1983–1997 for states in the U.S. I wanted to find a way to expand on this data in a meaningful way so I began googling information on alcohol consumption in the United States. In order for the data to better line up, I also wanted to make sure each data reported on similar years. I then found the Consumption_Alcohol dataset from the National Institute on Alcohol Abuse and Alcoholism. This dataset looks at per capita ethanol consumption for all states from 1997-2009 for a range of beverages. In joining these two datasets together, I aim to find how alcohol consumption relates to fatalities, seatbelt usage rates, income, and a range of other variables in the dataset.</em></p>
+</div>
+<div id="guidelines" class="section level3">
+<h3>Guidelines</h3>
+<div id="tidying" class="section level4">
+<h4>1. Tidying</h4>
+<pre class="r"><code>alcrates &lt;- Consumption_Alcohol %&gt;% rename(State.Year = &quot;State or other\ngeographic area&quot;, 
+    U.S._decile = &quot;U.S. decile for all beverages\n&quot;, All = &quot;All beverages&quot;)
+alcrates &lt;- alcrates %&gt;% select(-U.S._decile) %&gt;% pivot_wider(names_from = &quot;State.Year&quot;, 
+    values_from = c(&quot;Beer&quot;, &quot;Wine&quot;, &quot;Spirits&quot;, &quot;All&quot;))
+alcrates &lt;- alcrates %&gt;% pivot_longer(contains(&quot;_&quot;)) %&gt;% separate(name, 
+    into = c(&quot;Alcohol&quot;, &quot;state&quot;), sep = &quot;_&quot;) %&gt;% separate(state, 
+    into = c(&quot;State&quot;, &quot;Year&quot;))
+alcrates &lt;- alcrates %&gt;% pivot_wider(names_from = &quot;Alcohol&quot;, 
+    values_from = &quot;value&quot;)
+alcrates</code></pre>
+<pre><code>## # A tibble: 1,683 x 6
+##    State   Year   Beer  Wine Spirits   All
+##    &lt;chr&gt;   &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;
+##  1 Alabama 2009   1.2   0.22   0.580  2.01
+##  2 Alabama 2008   1.24  0.22   0.580  2.04
+##  3 Alabama 2007   1.24  0.22   0.56   2.02
+##  4 Alabama 2006   1.22  0.21   0.55   1.97
+##  5 Alabama 2005   1.18  0.2    0.53   1.91
+##  6 Alabama 2004   1.19  0.2    0.52   1.9 
+##  7 Alabama 2003   1.18  0.19   0.52   1.89
+##  8 Alabama 2002   1.18  0.21   0.53   1.92
+##  9 Alabama 2001   1.16  0.17   0.53   1.86
+## 10 Alabama 2000   1.19  0.18   0.51   1.88
+## # … with 1,673 more rows</code></pre>
+<p><em>The Consumption_Alcohol dataset had one column for state and year so I attempted to make it tidy by splitting the two up into distinct columns for year and state using pivot_wider. I then used pivot_longer to give each variable its own column and got rid of the U.S._decile column as this information was not useful for this project.</em></p>
+</div>
+<div id="joining" class="section level4">
+<h4>2. Joining</h4>
+<pre class="r"><code>key &lt;- read_csv(&quot;https://raw.githubusercontent.com/jasonong/List-of-US-States/master/states.csv&quot;)
+newkey &lt;- key %&gt;% mutate(new.state = str_replace(State, &quot; &quot;, 
+    &quot;&quot;))
+newkey2 &lt;- newkey %&gt;% mutate(new.state2 = str_replace(new.state, 
+    &quot; &quot;, &quot;&quot;))
+newkey2 &lt;- newkey2 %&gt;% select(-State, -new.state)
+newrates &lt;- full_join(newkey2, alcrates, by = c(new.state2 = &quot;State&quot;))
+fulldata &lt;- full_join(newrates, USSeatBelts, by = c(Abbreviation = &quot;state&quot;, 
+    Year = &quot;year&quot;))
+fulldata2 &lt;- fulldata %&gt;% na.omit() %&gt;% select(c(-new.state2, 
+    -speed65, -speed70))
+fulldata2</code></pre>
+<pre><code>## # A tibble: 556 x 14
+##    Abbreviation Year   Beer  Wine Spirits   All miles fatalities seatbelt
+##    &lt;chr&gt;        &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;    &lt;dbl&gt;
+##  1 AL           1997   1.14  0.15    0.52  1.81 53458     0.0223    0.520
+##  2 AL           1996   1.17  0.15    0.53  1.86 51433     0.0223    0.540
+##  3 AL           1995   1.14  0.15    0.53  1.81 50628     0.0220    0.520
+##  4 AL           1994   1.16  0.17    0.54  1.87 48956     0.0221    0.550
+##  5 AL           1993   1.14  0.17    0.56  1.86 47337     0.0221    0.550
+##  6 AL           1992   1.02  0.19    0.59  1.79 45762     0.0225    0.580
+##  7 AL           1991   1     0.17    0.59  1.76 42924     0.0260    0.470
+##  8 AL           1990   1.12  0.18    0.61  1.92 42347     0.0265    0.440
+##  9 AL           1989   1.1   0.17    0.6   1.87 40765     0.0252    0.380
+## 10 AL           1988   1.1   0.18    0.61  1.89 39684     0.0258    0.290
+## # … with 546 more rows, and 5 more variables: drinkage &lt;fct&gt;, alcohol &lt;fct&gt;,
+## #   income &lt;dbl&gt;, age &lt;dbl&gt;, enforce &lt;fct&gt;</code></pre>
+<p><em>I did a full join on this dataset as I wanted to keep all the variables and did not want to drop any from the join. In order to join by states, I had to do a separate join so that state names would be abbreviated. After the state names were abbreviated, I could join the two datasets together. I also joined by year so that the datasets would be merged by the two variables they had in common. I then removed information that wasn’t useful for this project such as the speed variables which only said whether or not there was a 65 or 70 mile per hour speed limit.</em></p>
+</div>
+<div id="summary-statistics" class="section level4">
+<h4>3. Summary statistics</h4>
+<pre class="r"><code>library(tidyverse)
+library(dplyr)
+fulldata3 &lt;- fulldata2 %&gt;% rename(State = &quot;Abbreviation&quot;, Miles = &quot;miles&quot;, 
+    Fatalities = &quot;fatalities&quot;, Seatbelt = &quot;seatbelt&quot;, DrinkingAge = &quot;drinkage&quot;, 
+    Alcohol = &quot;alcohol&quot;, Income = &quot;income&quot;, Age = &quot;age&quot;, Enforcement = &quot;enforce&quot;)
+fulldata3 %&gt;% filter(Alcohol == &quot;yes&quot;) %&gt;% filter(All == max(All)) %&gt;% 
+    select(State, All, Year, Fatalities, Seatbelt)</code></pre>
+<pre><code>## # A tibble: 2 x 5
+##   State   All Year  Fatalities Seatbelt
+##   &lt;chr&gt; &lt;dbl&gt; &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt;
+## 1 NH     4.13 1996      0.0122    0.560
+## 2 NH     4.13 1994      0.0113    0.537</code></pre>
+<pre class="r"><code>fulldata3 %&gt;% filter(Alcohol == &quot;no&quot;) %&gt;% filter(All == min(All)) %&gt;% 
+    select(State, All, Year, Fatalities, Seatbelt)</code></pre>
+<pre><code>## # A tibble: 1 x 5
+##   State   All Year  Fatalities Seatbelt
+##   &lt;chr&gt; &lt;dbl&gt; &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt;
+## 1 WV      1.6 1997      0.0208    0.580</code></pre>
+<pre class="r"><code>RegionsData &lt;- fulldata3 %&gt;% dplyr::mutate(Region = recode(State, 
+    AZ = &quot;Southwest&quot;, NM = &quot;Southwest&quot;, OK = &quot;Southwest&quot;, TX = &quot;Southwest&quot;, 
+    WA = &quot;West&quot;, OR = &quot;West&quot;, ID = &quot;West&quot;, NV = &quot;West&quot;, UT = &quot;West&quot;, 
+    CA = &quot;West&quot;, AK = &quot;West&quot;, HI = &quot;West&quot;, CO = &quot;West&quot;, WY = &quot;West&quot;, 
+    MT = &quot;West&quot;, ND = &quot;Midwest&quot;, SD = &quot;Midwest&quot;, NE = &quot;Midwest&quot;, 
+    KS = &quot;Midwest&quot;, MN = &quot;Midwest&quot;, WI = &quot;Midwest&quot;, MI = &quot;Midwest&quot;, 
+    IA = &quot;Midwest&quot;, IL = &quot;Midwest&quot;, MO = &quot;Midwest&quot;, IN = &quot;Midwest&quot;, 
+    OH = &quot;Midwest&quot;, AR = &quot;Southeast&quot;, TN = &quot;Southeast&quot;, LA = &quot;Southeast&quot;, 
+    MS = &quot;Southeast&quot;, AL = &quot;Southeast&quot;, GA = &quot;Southeast&quot;, FL = &quot;Southeast&quot;, 
+    KY = &quot;Southeast&quot;, WV = &quot;Southeast&quot;, VA = &quot;Southeast&quot;, NC = &quot;Southeast&quot;, 
+    SC = &quot;Southeast&quot;, PA = &quot;Northeast&quot;, MD = &quot;Northeast&quot;, DC = &quot;Northeast&quot;, 
+    DE = &quot;Northeast&quot;, NJ = &quot;Northeast&quot;, CT = &quot;Northeast&quot;, RI = &quot;Northeast&quot;, 
+    NY = &quot;Northeast&quot;, MA = &quot;Northeast&quot;, NH = &quot;Northeast&quot;, ME = &quot;Northeast&quot;, 
+    VT = &quot;Northeast&quot;))
+
+fulldata3 %&gt;% group_by(State) %&gt;% summarize(mean = mean(All), 
+    sd = sd(All), count = n(), se = sd/sqrt(count), variation = var(All), 
+    median = median(All))</code></pre>
+<pre><code>## # A tibble: 51 x 7
+##    State  mean     sd count     se variation median
+##    &lt;chr&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt;  &lt;dbl&gt;     &lt;dbl&gt;  &lt;dbl&gt;
+##  1 AK     2.89 0.286      8 0.101    0.0816    2.94
+##  2 AL     1.86 0.0483    14 0.0129   0.00233   1.87
+##  3 AR     1.75 0.0871    10 0.0275   0.00758   1.74
+##  4 AZ     2.59 0.126      8 0.0445   0.0158    2.6 
+##  5 CA     2.62 0.351     13 0.0974   0.123     2.54
+##  6 CO     2.53 0.0794     8 0.0281   0.00631   2.54
+##  7 CT     2.25 0.103      8 0.0365   0.0107    2.21
+##  8 DC     3.84 0.173      8 0.0611   0.0298    3.77
+##  9 DE     2.76 0.0949     8 0.0335   0.00900   2.76
+## 10 FL     2.77 0.195     13 0.0540   0.0378    2.75
+## # … with 41 more rows</code></pre>
+<pre class="r"><code>fulldata3 %&gt;% group_by(State, Year) %&gt;% summarize(mean_rank = mean(All, 
+    na.rm = T)) %&gt;% arrange(desc(mean_rank))</code></pre>
+<pre><code>## # A tibble: 556 x 3
+## # Groups:   State [51]
+##    State Year  mean_rank
+##    &lt;chr&gt; &lt;chr&gt;     &lt;dbl&gt;
+##  1 NV    1986       5.05
+##  2 NV    1987       4.99
+##  3 NV    1988       4.91
+##  4 NV    1990       4.78
+##  5 NH    1986       4.51
+##  6 NH    1987       4.41
+##  7 NH    1993       4.38
+##  8 NH    1989       4.37
+##  9 NH    1988       4.33
+## 10 NV    1991       4.31
+## # … with 546 more rows</code></pre>
+<pre class="r"><code>fulldata3 %&gt;% group_by(Year) %&gt;% summarize_if(is.numeric, mean)</code></pre>
+<pre><code>## # A tibble: 15 x 10
+##    Year   Beer  Wine Spirits   All  Miles Fatalities Seatbelt Income   Age
+##    &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;      &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+##  1 1983   1.33 0.183   0.71   2.22 37156.     0.0243    0.100 10982.  34.5
+##  2 1984   1.28 0.304   0.846  2.43 44776.     0.0248    0.150 13000.  34.8
+##  3 1985   1.32 0.347   0.889  2.55 46600.     0.0242    0.236 14018.  34.8
+##  4 1986   1.35 0.373   0.887  2.61 43157.     0.0246    0.337 14669.  34.9
+##  5 1987   1.35 0.359   0.88   2.59 47776.     0.0235    0.402 15609.  35.0
+##  6 1988   1.36 0.354   0.836  2.54 47933.     0.0232    0.449 16400.  35.1
+##  7 1989   1.29 0.311   0.775  2.38 51604.     0.0210    0.464 17591.  35.3
+##  8 1990   1.37 0.307   0.83   2.50 42108.     0.0212    0.469 18263.  35.2
+##  9 1991   1.33 0.283   0.772  2.38 42396.     0.0198    0.531 18799.  35.3
+## 10 1992   1.32 0.285   0.766  2.37 43918.     0.0183    0.568 19730.  35.4
+## 11 1993   1.30 0.27    0.737  2.31 45031.     0.0182    0.595 20435.  35.6
+## 12 1994   1.29 0.269   0.716  2.28 46274.     0.0177    0.622 21284.  35.7
+## 13 1995   1.27 0.275   0.694  2.23 47505.     0.0179    0.634 22207.  35.8
+## 14 1996   1.27 0.287   0.689  2.24 48671.     0.0174    0.633 23301.  36.0
+## 15 1997   1.26 0.289   0.683  2.23 50203.     0.0172    0.648 24327.  36.1</code></pre>
+<pre class="r"><code>fulldata3 %&gt;% summarize_if(is.numeric, mean)</code></pre>
+<pre><code>## # A tibble: 1 x 9
+##    Beer  Wine Spirits   All  Miles Fatalities Seatbelt Income   Age
+##   &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;      &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+## 1  1.31 0.299   0.766  2.37 46134.     0.0198    0.529 19572.  35.5</code></pre>
+<p><em>I first renamed all the variables so that the dataset would look cleaner. I then filtered for when there was a maximum of 0.08 blood alcohol content to find which state had the maximum alcohol consumption for all beverages. That state was New Hampshire which had 0.0122 fatalities in 1996. I then filtered by when there wasn’t a maximum of 0.08 blood alcohol content to find the state that had the least consumption which was West Virginia. Surprisingly this state had 0.0208 fatalities in 1997. This data was surprising as one year after New Hampshire, West Virginia which had lower alcohol consumption, had more fatalities. This result was not expected. I then used mutate to group each state by region in the U.S. to look more broadly at the areas. I also created summary statistics for each variable and found that out of all states, Nevada had the highest mean alcohol consumption in 1986. I also found that beer consumption was the highest for all alcohol groups which I found surprising and that the mean values of age did not differ much over the years as they generally were between 34-36.</em></p>
+</div>
+<div id="visualizations" class="section level4">
+<h4>4. Visualizations</h4>
+<pre class="r"><code>fulldata3 %&gt;% select_if(is.numeric) %&gt;% cor %&gt;% as.data.frame %&gt;% 
+    rownames_to_column %&gt;% pivot_longer(-1) %&gt;% ggplot(aes(rowname, 
+    name, fill = value)) + geom_tile() + geom_text(aes(label = round(value, 
+    2))) + xlab(&quot;&quot;) + ylab(&quot;&quot;) + coord_fixed() + theme(axis.text.x = element_text(angle = 20)) + 
+    scale_fill_gradient2(low = &quot;blue&quot;, mid = &quot;white&quot;, high = &quot;pink&quot;) + 
+    ggtitle(&quot;Correlation Heatmap&quot;)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-1.png" width="672" style="display: block; margin: auto;" />
+<em>As seen in the correlation heatmap, it is evident that income and seatbelt usage rates have a relatively strong correlation compared to other variables in this dataset. Income and fatalities have a relatively negative correlation. Additionally, wine and all beverage consumption have a strong correlation which is expected as the all beverages column encompasses wine.</em></p>
+<pre class="r"><code>ggplot(data = RegionsData, aes(x = Region, y = Fatalities, fill = Alcohol)) + 
+    geom_bar(stat = &quot;summary&quot;, fun = mean) + scale_fill_brewer(palette = &quot;Reds&quot;) + 
+    facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 90)) + 
+    ggtitle(&quot;Relationship Between Alcohol and Fatalities by Region and Year&quot;) + 
+    ylab(&quot;Fatalities (per million traffic miles)&quot;) + xlab(&quot;U.S. Region&quot;)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-6-1.png" width="672" style="display: block; margin: auto;" />
+<em>Exploring the data further, I generated a barplot that showed the number of fatalities in each U.S. region for each year. This graph also examined whether or not there was a maximum of 0.08 blood alcohol content. I expected there to be higher fatalities when the blood alcohol content exceeded 0.08 however it appears as though the data for “yes” and “no” is relatively equal. As the years progress following the 1980s, it appears as though there are a higher number of fatalities for the “yes” group. Additionally, up until 1991, the West had the highest number of fatalities and after 1991, the Southeast and Southwest regions began to have the highest number.</em></p>
+<pre class="r"><code>ggplot(data = RegionsData, aes(x = Income, y = Seatbelt, color = Region)) + 
+    geom_point() + scale_x_continuous(breaks = seq(5000, 40000, 
+    5000)) + ggtitle(&quot;Seatbelt Usage Rate Per Capita Income&quot;) + 
+    ylab(&quot;Seatbelt Usage Rate&quot;) + xlab(&quot;Median Income (US Dollars)&quot;)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-7-1.png" width="672" style="display: block; margin: auto;" />
+<em>This scatterplot demonstrates that seatbelt usage rates increase with increasing per capita income for all regions in the United States. This logically makes sense as individuals with higher income are more likely to receive higher education that might warn them of the dangers of driving without a seatbelt. Additionally, seatbelt usage rate is self reported so maybe those individuals with higher incomes were more likely to report their self data.</em></p>
+<pre class="r"><code>ggplot(data = RegionsData, aes(x = Seatbelt, y = Fatalities, 
+    color = Region)) + geom_point() + geom_smooth(method = &quot;lm&quot;, 
+    color = &quot;black&quot;) + scale_color_brewer(palette = &quot;Set1&quot;) + 
+    facet_wrap(~Region) + theme(legend.position = &quot;none&quot;) + ggtitle(&quot;Fatalities and Seatbelt Usage Rates by U.S. Region&quot;) + 
+    ylab(&quot;Fatalities (per million traffic miles)&quot;) + xlab(&quot;Seatbelt Usage Rate&quot;)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-8-1.png" width="672" style="display: block; margin: auto;" />
+<em>This graph looks at seatbelt usage rates compared to fatalities for each region in the U.S. Each region except for the Southwest demonstrates a clear negative linear relationship between the two variables. This shows that for the majority of states, the number of fatalities increases as the use of seatbelts decreases. Higher seatbelt usage rates indicate lower fatalities.</em></p>
+<div id="k-meanspam-clustering" class="section level5">
+<h5>5. k-means/PAM clustering</h5>
+<pre class="r"><code>library(cluster)
+pam_dat &lt;- fulldata3 %&gt;% select(c(-State, -Year, -DrinkingAge, 
+    -Alcohol, -Enforcement))
+sil_width &lt;- vector()
+for (i in 2:10) {
+    pam_fit &lt;- pam(pam_dat, k = i)
+    sil_width[i] &lt;- pam_fit$silinfo$avg.width
+}
+ggplot() + geom_line(aes(x = 1:10, y = sil_width)) + scale_x_continuous(name = &quot;k&quot;, 
+    breaks = 1:10)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-9-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pam2 &lt;- fulldata3 %&gt;% select(c(-State, -Year, -DrinkingAge, -Alcohol, 
+    -Enforcement)) %&gt;% scale %&gt;% pam(4)
+pam2</code></pre>
+<pre><code>## Medoids:
+##       ID        Beer       Wine    Spirits        All       Miles  Fatalities
+## [1,] 428  0.01208833 -0.5266494 -0.6505406 -0.4922169  0.32279695 -0.20181335
+## [2,] 159 -0.31463234 -0.5266494 -0.3178200 -0.4222955 -0.04322281  0.82362900
+## [3,]  60  0.38548338  0.3410556  0.3476212  0.4167621 -0.39502279 -0.03910941
+## [4,] 268  2.53250490  1.2755072  4.0075476  3.3709441 -0.77951538 -0.73925648
+##         Seatbelt     Income        Age
+## [1,]  0.53558019  0.6813353  0.7402621
+## [2,] -0.95102923 -1.1864444 -0.4015762
+## [3,] -0.11077184  0.1191024 -0.9011502
+## [4,] -0.06728977  0.2612997 -0.3521024
+## Clustering vector:
+##   [1] 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 1 3 3 3 3 3 3 3 1 1 2 2 2 2 2
+##  [38] 2 2 2 1 1 1 1 1 1 1 3 3 3 3 3 3 3 3 3 3 3 3 3 3 1 1 1 1 1 1 1 1 3 3 3 3 3
+##  [75] 3 3 3 4 4 4 4 4 4 4 4 1 1 1 1 1 1 1 1 1 1 1 2 2 1 1
+##  [ reached getOption(&quot;max.print&quot;) -- omitted 456 entries ]
+## Objective function:
+##    build     swap 
+## 2.185470 2.148928 
+## 
+## Available components:
+##  [1] &quot;medoids&quot;    &quot;id.med&quot;     &quot;clustering&quot; &quot;objective&quot;  &quot;isolation&quot; 
+##  [6] &quot;clusinfo&quot;   &quot;silinfo&quot;    &quot;diss&quot;       &quot;call&quot;       &quot;data&quot;</code></pre>
+<pre class="r"><code>pamclust &lt;- pam_dat %&gt;% mutate(cluster = as.factor(pam2$clustering))
+pamclust %&gt;% ggplot(aes(All, Fatalities, color = cluster)) + 
+    geom_point() + scale_color_brewer(palette = &quot;Set1&quot;) + ggtitle(&quot;Cluster Plot&quot;) + 
+    ylab(&quot;Fatalities (per million traffic miles)&quot;) + xlab(&quot;Per Capita Consumption For All Beverages (Gallons)&quot;)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-9-2.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pamclust %&gt;% group_by(cluster) %&gt;% summarize_if(is.numeric, mean, 
+    na.rm = T)</code></pre>
+<pre><code>## # A tibble: 4 x 10
+##   cluster  Beer  Wine Spirits   All  Miles Fatalities Seatbelt Income   Age
+##   &lt;fct&gt;   &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;      &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+## 1 1        1.23 0.272   0.643  2.14 63081.     0.0170    0.634 22253.  36.3
+## 2 2        1.23 0.202   0.663  2.10 31974.     0.0239    0.360 14984.  34.9
+## 3 3        1.40 0.369   0.846  2.62 42240.     0.0198    0.538 19141.  34.7
+## 4 4        1.80 0.62    1.77   4.19  8821.     0.0195    0.528 24067.  35.8</code></pre>
+<pre class="r"><code>library(GGally)
+library(plotly)
+ggpairs(pamclust, columns = 1:4, aes(color = cluster))</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-9-3.png" width="672" style="display: block; margin: auto;" />
+<em>First, I found the number of clusters (k) to be used in this analysis by removing all the categorical variables from my dataset and then using the Silhouette Method. Using this method, 4 clusters was chosen. ALthough there was a higher value for 2, 4 clusters would likely provide more interesting data and this value had an average Silhouette width greater than 0.5 which can be interpreted as a reasonable cluster structure. Next, I looked at the Medoids of each numeric variable and the cluster summaries for each. I then generated a plot in order to visualize this cluster by looking at Fatalities and All Beverage Consumption as these two variables together showed the best cluster structure. This cluster plot is not weak, but also does not look very strong, as each cluster is relatively close to one another and the points within each are relatively far apart. It is also easier to see two distinct clusters rather than four. With that being said, it can be seen how the data naturally forms groups and observations are related to one another.</em></p>
+</div>
+</div>
+</div>
 </div>
 
             

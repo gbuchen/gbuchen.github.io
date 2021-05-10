@@ -1,8 +1,134 @@
 ---
-title: "Project 1"
-author: "Me"
-date: "2020-12-01"
-output: html_document
+title: 'Project 1: Exploratory Data Analysis'
+author: "SDS348"
+date: 'April 04, 2021'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+  pdf_document:
+    toc: no
 ---
 
-## Test Project 1
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
+tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
+```
+
+## Grace Buchen, gb23396
+
+## Data Wrangling and Data Exploration
+
+#### Finding data:
+
+```{R}
+library(AER)
+data("USSeatBelts")
+
+library(readr)
+Consumption_Alcohol <- read_csv("Consumption_Alcohol.csv", 
+    col_types = cols(Beer = col_number(), 
+        Wine = col_number(), Spirits = col_number(), 
+        `All beverages` = col_number()))
+
+library(tidyverse)
+library(dplyr)
+```
+
+*When starting this project, I wanted to choose a topic that was important to me. In exploring the datasets in R, I found the USSeatBelts dataset. This dataset looks at traffic fatalities and seat belt usage for the years 1983–1997 for states in the U.S. I wanted to find a way to expand on this data in a meaningful way so I began googling information on alcohol consumption in the United States. In order for the data to better line up, I also wanted to make sure each data reported on similar years. I then found the Consumption_Alcohol dataset from the National Institute on Alcohol Abuse and Alcoholism. This dataset looks at per capita ethanol consumption for all states from 1997-2009 for a range of beverages. In joining these two datasets together, I aim to find how alcohol consumption relates to fatalities, seatbelt usage rates, income, and a range of other variables in the dataset.*
+
+### Guidelines
+
+#### 1. Tidying 
+    
+```{R}
+Consumption_Alcohol %>% rename(State.Year = 'State or other\ngeographic area', U.S._decile = 'U.S. decile for all beverages\n', All = 'All beverages') -> alcrates
+alcrates %>% select(-U.S._decile) %>% pivot_wider(names_from="State.Year", values_from= c("Beer", "Wine", "Spirits", "All"))  -> alcrates
+alcrates %>% pivot_longer(contains("_")) %>% separate(name,into=c("Alcohol", "state"), sep="_") %>% separate(state,into=c("State","Year")) -> alcrates
+alcrates %>% pivot_wider(names_from="Alcohol", values_from="value") -> alcrates
+alcrates
+```
+
+*The Consumption_Alcohol dataset had one column for state and year so I attempted to make it tidy by splitting the two up into distinct columns for year and state using pivot_wider. I then used pivot_longer to give each variable its own column and got rid of the U.S._decile column as this information was not useful for this project.*
+
+#### 2. Joining 
+
+```{R}
+key<- read_csv("https://raw.githubusercontent.com/jasonong/List-of-US-States/master/states.csv")
+key %>% mutate(new.state = str_replace(State, " ", "")) -> newkey
+newkey %>% mutate(new.state2 = str_replace(new.state, " ", "")) -> newkey2
+newkey2 %>% select(-State, -new.state) -> newkey2
+full_join(newkey2, alcrates, by=c("new.state2" = "State")) -> newrates
+full_join(newrates, USSeatBelts, by=c("Abbreviation"="state", "Year"="year")) -> fulldata 
+fulldata %>% na.omit() %>% select(c(-new.state2, -speed65, -speed70)) -> fulldata2
+fulldata2
+```
+*I did a full join on this dataset as I wanted to keep all the variables and did not want to drop any from the join. In order to join by states, I had to do a separate join so that state names would be abbreviated. After the state names were abbreviated, I could join the two datasets together. I also joined by year so that the datasets would be merged by the two variables they had in common. I then removed information that wasn't useful for this project such as the speed variables which only said whether or not there was a 65 or 70 mile per hour speed limit.* 
+
+#### 3. Summary statistics
+ 
+```{R}
+library(tidyverse)
+library(dplyr)
+fulldata2 %>% rename(State = "Abbreviation", Miles = "miles", Fatalities = "fatalities", Seatbelt = "seatbelt", DrinkingAge = "drinkage", Alcohol = "alcohol", Income = "income", Age = "age", Enforcement = "enforce") -> fulldata3
+fulldata3 %>% filter(Alcohol == "yes") %>% filter(All == max(All)) %>% select(State, All, Year, Fatalities, Seatbelt)
+fulldata3 %>% filter(Alcohol == "no") %>% filter(All == min(All)) %>% select(State, All, Year, Fatalities, Seatbelt)
+fulldata3 %>% dplyr::mutate(Region=recode(State, "AZ"="Southwest", "NM"="Southwest", "OK"="Southwest", "TX"="Southwest", "WA"="West", "OR"="West", "ID"="West", "NV"="West", "UT"="West", "CA"="West", "AK"="West", "HI"="West", "CO"="West", "WY"="West", "MT"="West", "ND"="Midwest", "SD"="Midwest", "NE"="Midwest", "KS"="Midwest", "MN"="Midwest", "WI"="Midwest", "MI"="Midwest", "IA"="Midwest", "IL"="Midwest", "MO"="Midwest", "IN"="Midwest", "OH"="Midwest", "AR"="Southeast", "TN"="Southeast", "LA"="Southeast", "MS"="Southeast", "AL"="Southeast", "GA"="Southeast", "FL"="Southeast", "KY"="Southeast", "WV"="Southeast", "VA"="Southeast", "NC"="Southeast", "SC"="Southeast", "PA"="Northeast", "MD"="Northeast", "DC"="Northeast", "DE"="Northeast", "NJ"="Northeast", "CT"="Northeast", "RI"="Northeast", "NY"="Northeast", "MA"="Northeast", "NH"="Northeast", "ME"="Northeast", "VT"="Northeast")) -> RegionsData
+
+fulldata3 %>% group_by(State) %>% summarize(mean=mean(All), sd=sd(All), count=n(), se=sd/sqrt(count), variation=var(All), median=median(All))
+fulldata3 %>% group_by(State, Year) %>% summarize(mean_rank=mean(All,na.rm=T)) %>% arrange(desc(mean_rank))
+fulldata3 %>% group_by(Year) %>% summarize_if(is.numeric,mean)
+fulldata3 %>% summarize_if(is.numeric, mean)
+```
+*I first renamed all the variables so that the dataset would look cleaner. I then filtered for when there was a maximum of 0.08 blood alcohol content to find which state had the maximum alcohol consumption for all beverages. That state was New Hampshire which had 0.0122 fatalities in 1996. I then filtered by when there wasn't a maximum of 0.08 blood alcohol content to find the state that had the least consumption which was West Virginia. Surprisingly this state had 0.0208 fatalities in 1997. This data was surprising as one year after New Hampshire, West Virginia which had lower alcohol consumption, had more fatalities. This result was not expected. I then used mutate to group each state by region in the U.S. to look more broadly at the areas. I also created summary statistics for each variable and found that out of all states, Nevada had the highest mean alcohol consumption in 1986. I also found that beer consumption was the highest for all alcohol groups which I found surprising and that the mean values of age did not differ much over the years as they generally were between 34-36.*
+
+#### 4. Visualizations
+
+```{R}
+fulldata3 %>% select_if(is.numeric) %>% cor %>% as.data.frame %>%  rownames_to_column %>% pivot_longer(-1) %>%  ggplot(aes(rowname,name,fill=value))+geom_tile()+  geom_text(aes(label=round(value,2)))+  xlab("")+ylab("")+coord_fixed()+theme(axis.text.x = element_text(angle=20))+scale_fill_gradient2(low="blue",mid="white",high="pink")+ ggtitle("Correlation Heatmap")
+```
+*As seen in the correlation heatmap, it is evident that income and seatbelt usage rates have a relatively strong correlation compared to other variables in this dataset. Income and fatalities have a relatively negative correlation. Additionally, wine and all beverage consumption have a strong correlation which is expected as the all beverages column encompasses wine.*
+
+```{R}
+ggplot(data=RegionsData, aes(x=Region, y=Fatalities, fill=Alcohol))+geom_bar(stat="summary", fun=mean)+scale_fill_brewer(palette = "Reds")+facet_wrap(~Year)+theme(axis.text.x = element_text(angle=90))+ggtitle("Relationship Between Alcohol and Fatalities by Region and Year") + ylab("Fatalities (per million traffic miles)") + xlab("U.S. Region")
+```
+*Exploring the data further, I generated a barplot that showed the number of fatalities in each U.S. region for each year. This graph also examined whether or not there was a maximum of 0.08 blood alcohol content. I expected there to be higher fatalities when the blood alcohol content exceeded 0.08 however it appears as though the data for "yes" and "no" is relatively equal. As the years progress following the 1980s, it appears as though there are a higher number of fatalities for the "yes" group. Additionally, up until 1991, the West had the highest number of fatalities and after 1991, the Southeast and Southwest regions began to have the highest number.*
+
+```{R}
+ggplot(data=RegionsData,aes(x=Income, y=Seatbelt, color=Region))+geom_point()+scale_x_continuous(breaks=seq(5000,40000,5000))+ ggtitle("Seatbelt Usage Rate Per Capita Income") + ylab("Seatbelt Usage Rate") + xlab("Median Income (US Dollars)")
+```
+*This scatterplot demonstrates that seatbelt usage rates increase with increasing per capita income for all regions in the United States. This logically makes sense as individuals with higher income are more likely to receive higher education that might warn them of the dangers of driving without a seatbelt. Additionally, seatbelt usage rate is self reported so maybe those individuals with higher incomes were more likely to report their self data.*
+
+```{R}
+ggplot(data=RegionsData,aes(x=Seatbelt, y=Fatalities, color=Region))+geom_point()+geom_smooth(method = "lm", color="black")+scale_color_brewer(palette = "Set1")+facet_wrap(~Region)+theme(legend.position="none")+ggtitle("Fatalities and Seatbelt Usage Rates by U.S. Region") + ylab("Fatalities (per million traffic miles)") + xlab("Seatbelt Usage Rate")
+```
+*This graph looks at seatbelt usage rates compared to fatalities for each region in the U.S. Each region except for the Southwest demonstrates a clear negative linear relationship between the two variables. This shows that for the majority of states, the number of fatalities increases as the use of seatbelts decreases. Higher seatbelt usage rates indicate lower fatalities.*
+    
+##### 5. k-means/PAM clustering
+    
+```{R}
+library(cluster)
+pam_dat <- fulldata3 %>% select(c(-State, -Year, -DrinkingAge, -Alcohol, -Enforcement))
+sil_width<-vector() 
+for (i in 2:10) {
+  pam_fit <- pam(pam_dat, k = i)    
+  sil_width[i] <- pam_fit$silinfo$avg.width  }
+ggplot()+geom_line(aes(x=1:10,y=sil_width))+scale_x_continuous(name="k",breaks=1:10)
+
+pam2 <- fulldata3 %>% select(c(-State, -Year, -DrinkingAge, -Alcohol, -Enforcement)) %>% scale %>% pam(4)
+pam2
+
+pamclust <- pam_dat %>% mutate(cluster=as.factor(pam2$clustering))
+pamclust%>%ggplot(aes(All,Fatalities,color=cluster))+geom_point()+scale_color_brewer(palette = "Set1")+ggtitle("Cluster Plot") + ylab("Fatalities (per million traffic miles)") + xlab("Per Capita Consumption For All Beverages (Gallons)")
+pamclust%>%group_by(cluster)%>%summarize_if(is.numeric,mean,na.rm=T)
+
+library(GGally)
+library(plotly)
+ggpairs(pamclust, columns=1:4, aes(color=cluster))
+```
+*First, I found the number of clusters (k) to be used in this analysis by removing all the categorical variables from my dataset and then using the Silhouette Method. Using this method, 4 clusters was chosen. ALthough there was a higher value for 2, 4 clusters would likely provide more interesting data and this value had an average Silhouette width greater than 0.5 which can be interpreted as a reasonable cluster structure. Next, I looked at the Medoids of each numeric variable and the cluster summaries for each. I then generated a plot in order to visualize this cluster by looking at Fatalities and All Beverage Consumption as these two variables together showed the best cluster structure. This cluster plot is not weak, but also does not look very strong, as each cluster is relatively close to one another and the points within each are relatively far apart. It is also easier to see two distinct clusters rather than four. With that being said, it can be seen how the data naturally forms groups and observations are related to one another.*
+
+```{R, echo=F}
+```
