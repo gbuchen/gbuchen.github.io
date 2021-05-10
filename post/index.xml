@@ -16,7 +16,9 @@
       <description>No, not the snake!!
 In case that was triggering here is a picture of my dogs dressed like lions on Halloween.
 Time to do some actual coding…
-library(reticulate) thats &amp;lt;- &amp;quot;I don&amp;#39;t&amp;quot; me=&amp;quot;like snakes!&amp;quot; print(r.thats,me)  ## I don&amp;#39;t like snakes! Thanks for reading my post! You just found out some super secretive information about me! Enjoy :)</description>
+In R
+library(reticulate) thats &amp;lt;- &amp;quot;I don&amp;#39;t&amp;quot; And in python!
+me=&amp;quot;like snakes!&amp;quot; print(r.thats,me)  ## I don&amp;#39;t like snakes! Thanks for reading my post! You just found out some super secretive information about me! Enjoy :)</description>
     </item>
     
   </channel>

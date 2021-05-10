@@ -18,11 +18,13 @@ In case that was triggering here is a picture of my dogs dressed like lions on H
 
 Time to do some actual coding... 
 
+In R
 ```{R}
 library(reticulate)
 thats <- "I don't"
 ```
 
+And in python! 
 ```{python}
 me="like snakes!"
 print(r.thats,me)  
